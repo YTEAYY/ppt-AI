@@ -1,4 +1,5 @@
 # ppt-AI (EduFlow)
+<img width="1254" height="1254" alt="image" src="https://github.com/user-attachments/assets/9f49654d-1fb4-4da0-9615-37be319f6940" />
 
 학습 자료를 업로드하면 자동으로 PPT가 완성되는 AI 플랫폼입니다.  
 멀티 에이전트 아키텍처로 문서를 분석하고, 슬라이드 구조를 생성한 뒤, `.pptx` 파일로 자동 출력합니다.
