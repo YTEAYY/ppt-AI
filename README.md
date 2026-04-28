@@ -45,6 +45,8 @@ ppt-AI/
         └── requirements.txt
 ```
 
+## 프로젝트 사진
+
 ## 사전 준비
 
 - Python 3.11 이상
