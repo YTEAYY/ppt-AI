@@ -11,7 +11,6 @@ EduFlow - 학교 맞춤형 발표 및 과제 자동화 AI
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import FileResponse
-import comtypes.client
 from pathlib import Path
 import uuid
 import shutil
@@ -33,12 +32,19 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 # PPTX → PDF 변환 함수 (Windows + PowerPoint 필요)
 def pptx_to_pdf(pptx_path: str, pdf_path: str):
-    powerpoint = comtypes.client.CreateObject("PowerPoint.Application")
-    powerpoint.Visible = 1
-    ppt = powerpoint.Presentations.Open(pptx_path, WithWindow=False)
-    ppt.SaveAs(pdf_path, 32)  # 32 = PDF
-    ppt.Close()
-    powerpoint.Quit()
+    try:
+        import comtypes.client
+        powerpoint = comtypes.client.CreateObject("PowerPoint.Application")
+        powerpoint.Visible = 1
+        ppt = powerpoint.Presentations.Open(pptx_path, WithWindow=False)
+        ppt.SaveAs(pdf_path, 32)  # 32 = PDF
+        ppt.Close()
+        powerpoint.Quit()
+    except ImportError:
+        raise RuntimeError(
+            "PDF conversion requires comtypes and Microsoft PowerPoint (Windows only). "
+            "Consider using LibreOffice for Linux-based environments."
+        )
 
 
 @app.post("/upload", response_model=UploadResponse)
