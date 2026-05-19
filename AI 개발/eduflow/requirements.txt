@@ -8,3 +8,4 @@ python-pptx
 aiofiles
 redis
 langchain-openai
+jinja2
