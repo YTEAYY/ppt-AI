@@ -18,15 +18,66 @@ from langchain_openai import OpenAI
 from app.services.openai_client import get_llm
 
 
-def create_slide(prs: Presentation, title: str, content: str, layout_index: int = 1) -> None:
-    """슬라이드 생성 유틸리티"""
+
+def create_slide(prs: Presentation, title: str, content: str, layout_index: int = 1, style: str = "default") -> None:
+    """슬라이드 생성 유틸리티 (가독성 좋은 디자인)"""
     slide_layout = prs.slide_layouts[layout_index]
     slide = prs.slides.add_slide(slide_layout)
-    slide.shapes.title.text = title
-    
-    if content and len(slide.placeholders) > 1:
-        text_frame = slide.placeholders[1].text_frame
-        text_frame.text = content
+    # 표지
+    if style == "cover":
+        slide.shapes.title.text = title
+        title_shape = slide.shapes.title
+        title_shape.text_frame.paragraphs[0].font.size = Pt(44)
+        title_shape.text_frame.paragraphs[0].font.bold = True
+        # 부제목
+        if len(slide.placeholders) > 1:
+            subtitle = slide.placeholders[1]
+            subtitle.text = content
+            for p in subtitle.text_frame.paragraphs:
+                p.font.size = Pt(24)
+                p.font.italic = True
+                p.font.color.rgb = None  # 기본 회색
+    # 목차
+    elif style == "toc":
+        slide.shapes.title.text = title
+        title_shape = slide.shapes.title
+        title_shape.text_frame.paragraphs[0].font.size = Pt(36)
+        title_shape.text_frame.paragraphs[0].font.bold = True
+        if len(slide.placeholders) > 1:
+            text_frame = slide.placeholders[1].text_frame
+            text_frame.clear()
+            for line in content.split("\n"):
+                if line.strip():
+                    p = text_frame.add_paragraph()
+                    p.text = line.strip()
+                    p.font.size = Pt(24)
+                    p.level = 0
+    # 결론/참고
+    elif style == "conclusion":
+        slide.shapes.title.text = title
+        title_shape = slide.shapes.title
+        title_shape.text_frame.paragraphs[0].font.size = Pt(32)
+        title_shape.text_frame.paragraphs[0].font.bold = True
+        if len(slide.placeholders) > 1:
+            text_frame = slide.placeholders[1].text_frame
+            text_frame.clear()
+            p = text_frame.add_paragraph()
+            p.text = content
+            p.font.size = Pt(22)
+            p.font.color.rgb = None
+    # 본문
+    else:
+        slide.shapes.title.text = title
+        title_shape = slide.shapes.title
+        title_shape.text_frame.paragraphs[0].font.size = Pt(30)
+        title_shape.text_frame.paragraphs[0].font.bold = True
+        if len(slide.placeholders) > 1:
+            text_frame = slide.placeholders[1].text_frame
+            text_frame.clear()
+            p = text_frame.add_paragraph()
+            p.text = content
+            p.font.size = Pt(20)
+            p.level = 0
 
 
 def generate_ppt(outline: str, script: str, output_path: Path) -> Path:
@@ -38,14 +89,15 @@ def generate_ppt(outline: str, script: str, output_path: Path) -> Path:
     - outline을 파싱하여 구조화된 슬라이드 생성
     - script 내용을 결론 슬라이드에 활용
     - 학교 양식에 맞는 디자인 적용
+    - 가독성 좋은 디자인 적용
     """
     prs = Presentation()
     
-    # 1) 표지 슬라이드
-    create_slide(prs, "EduFlow 발표자료", "학교 맞춤형 자동 생성 자료", layout_index=0)
+    # 1) 표지 슬라이드 (커버)
+    create_slide(prs, "EduFlow 발표자료", "학교 맞춤형 자동 생성 자료", layout_index=0, style="cover")
     
-    # 2) 개요 슬라이드
-    create_slide(prs, "목차", _parse_outline_summary(outline), layout_index=1)
+    # 2) 개요 슬라이드 (목차)
+    create_slide(prs, "목차", _parse_outline_summary(outline), layout_index=1, style="toc")
     
     # 3) 본문 슬라이드들 파싱
     slides_data = _parse_outline(outline)
@@ -54,15 +106,16 @@ def generate_ppt(outline: str, script: str, output_path: Path) -> Path:
             prs, 
             slide_info["title"], 
             slide_info["content"],
-            layout_index=1
+            layout_index=1,
+            style="body"
         )
     
     # 4) 결론 슬라이드 - script에서 핵심 메시지 추출
     conclusion = _extract_conclusion(script)
-    create_slide(prs, "결론 및 핵심 메시지", conclusion, layout_index=1)
+    create_slide(prs, "결론 및 핵심 메시지", conclusion, layout_index=1, style="conclusion")
     
     # 5) 참고자료 슬라이드
-    create_slide(prs, "참고자료", "본 자료는 AI를 통해 자동 생성되었습니다.", layout_index=1)
+    create_slide(prs, "참고자료", "본 자료는 AI를 통해 자동 생성되었습니다.", layout_index=1, style="conclusion")
     
     prs.save(output_path)
     return output_path

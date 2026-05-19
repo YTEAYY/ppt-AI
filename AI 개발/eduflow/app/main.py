@@ -9,8 +9,9 @@ EduFlow - 학교 맞춤형 발표 및 과제 자동화 AI
 - Feedback: 학생 피드백 수집 및 분석
 """
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
 from pathlib import Path
 import uuid
 import shutil
@@ -20,11 +21,14 @@ import asyncio
 from app.agents import analyzer, master, feedback, orchestrator
 from app.schemas.upload import UploadResponse, FeedbackRequest, FeedbackResponse
 
+
 app = FastAPI(
     title="EduFlow API",
     description="학교 맞춤형 발표 및 과제 자동화 AI 플랫폼",
     version="1.0.0"
 )
+
+templates = Jinja2Templates(directory="templates")
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -32,19 +36,13 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 # PPTX → PDF 변환 함수 (Windows + PowerPoint 필요)
 def pptx_to_pdf(pptx_path: str, pdf_path: str):
-    try:
-        import comtypes.client
-        powerpoint = comtypes.client.CreateObject("PowerPoint.Application")
-        powerpoint.Visible = 1
-        ppt = powerpoint.Presentations.Open(pptx_path, WithWindow=False)
-        ppt.SaveAs(pdf_path, 32)  # 32 = PDF
-        ppt.Close()
-        powerpoint.Quit()
-    except ImportError:
-        raise RuntimeError(
-            "PDF conversion requires comtypes and Microsoft PowerPoint (Windows only). "
-            "Consider using LibreOffice for Linux-based environments."
-        )
+    import comtypes.client
+    powerpoint = comtypes.client.CreateObject("PowerPoint.Application")
+    powerpoint.Visible = 1
+    ppt = powerpoint.Presentations.Open(pptx_path, WithWindow=False)
+    ppt.SaveAs(pdf_path, 32)  # 32 = PDF
+    ppt.Close()
+    powerpoint.Quit()
 
 
 @app.post("/upload", response_model=UploadResponse)
@@ -100,15 +98,11 @@ async def submit_feedback(feedback_data: FeedbackRequest):
     return FeedbackResponse(summary=summary, status="success")
 
 
-@app.get("/")
-async def root():
-    """API 상태 확인"""
-    return {
-        "name": "EduFlow API",
-        "version": "1.0.0",
-        "status": "running",
-        "docs": "/docs"
-    }
+
+# 메인 사용자용 웹페이지 (HTML)
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
 @app.get("/health")
